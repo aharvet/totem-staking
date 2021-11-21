@@ -9,9 +9,6 @@ require('solidity-coverage');
 const optimize = false;
 const showGasReporter = false;
 
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
 module.exports = {
   solidity: {
     version: '0.8.10',
@@ -26,17 +23,16 @@ module.exports = {
     hardhat: {
       // initialBaseFeePerGas: 0,
     },
-    // ropsten = {
-    //   url: process.env.ROPSTEN_ENDPOINT,
-    //   accounts: process.env.DEPLOYER_PRIVATE_KEY,
-    // }
+    bscTestnet: {
+      url: process.env.BSCTESTNET_ENDPOINT_URL,
+      accounts: { mnemonic: process.env.MNEMONIC },
+    },
   },
   gasReporter: {
     enabled: showGasReporter,
     currency: 'USD',
-    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.BSCSCAN_API_KEY,
   },
 };
