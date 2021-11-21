@@ -2,10 +2,9 @@
 
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ERC20Bridgable.sol";
 
-contract BabyDolz is ERC20, Ownable {
+contract BabyDolz is ERC20Bridgable {
     mapping(address => bool) public minters;
     mapping(address => bool) public senders;
     mapping(address => bool) public receivers;
@@ -14,7 +13,7 @@ contract BabyDolz is ERC20, Ownable {
     event SenderSet(address account, bool authorized);
     event ReceiverSet(address account, bool authorized);
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+    constructor(string memory name, string memory symbol) ERC20Bridgable(name, symbol) {}
 
     function setMinter(address account, bool authorized) external onlyOwner {
         minters[account] = authorized;
