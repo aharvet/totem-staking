@@ -10,7 +10,6 @@ import "./IERC20Bridgable.sol";
 struct BridgeUpdate {
     address newBridge;
     uint256 endGracePeriod;
-    bool hasToBeExecuted;
 }
 
 contract ERC20Bridgable is ERC20, Ownable, IERC20Bridgable {
@@ -27,12 +26,12 @@ contract ERC20Bridgable is ERC20, Ownable, IERC20Bridgable {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
     function launchBridgeUpdate(address newBridge) external onlyOwner {
-        require(!bridgeUpdate.hasToBeExecuted, "ERC20Bridgable: current update has to be executed");
+        require(bridgeUpdate.newBridge == address(0), "ERC20Bridgable: current update has to be executed");
         require(newBridge.isContract(), "ERC20Bridgable: address provided is not a contract");
 
         uint256 endGracePeriod = block.timestamp + 1 weeks;
 
-        bridgeUpdate = BridgeUpdate(newBridge, endGracePeriod, true);
+        bridgeUpdate = BridgeUpdate(newBridge, endGracePeriod);
 
         emit BridgeUpdateLaunched(newBridge, endGracePeriod);
     }
@@ -42,12 +41,12 @@ contract ERC20Bridgable is ERC20, Ownable, IERC20Bridgable {
             bridgeUpdate.endGracePeriod <= block.timestamp,
             "ERC20Bridgable: grace period has not finished"
         );
-        require(bridgeUpdate.hasToBeExecuted, "ERC20Bridgable: update already executed");
+        require(bridgeUpdate.newBridge != address(0), "ERC20Bridgable: update already executed");
 
-        bridgeUpdate.hasToBeExecuted = false;
         bridge = bridgeUpdate.newBridge;
-
         emit BridgeUpdateExecuted(bridgeUpdate.newBridge);
+
+        delete bridgeUpdate;
     }
 
     function mintFromBridge(address account, uint256 amount) external override onlyBridge {
