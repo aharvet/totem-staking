@@ -112,26 +112,26 @@ describe('BabyDolz', function () {
       await babyDolz.mint(user1.address, ethers.utils.parseUnits('10', 18));
     });
 
-    it('should transfer', async () => {
+    it('should transfer if sender authorized', async () => {
       const amount = 100000;
       await babyDolz.setSender(user1.address, true);
+      await babyDolz.connect(user1).transfer(user2.address, amount);
+      expect(await babyDolz.balanceOf(user2.address)).equal(amount);
+    });
+
+    it('should transfer if receiver authorized', async () => {
+      const amount = 100000;
       await babyDolz.setReceiver(user2.address, true);
       await babyDolz.connect(user1).transfer(user2.address, amount);
       expect(await babyDolz.balanceOf(user2.address)).equal(amount);
     });
 
-    it('should not transfer if sender not authorized', async () => {
-      await babyDolz.setReceiver(user2.address, true);
-      await expect(babyDolz.connect(user1).transfer(user2.address, 100)).to.be.revertedWith(
-        'BabyDolz: transfer not authorized',
-      );
-    });
-
-    it('should not transfer if receiver not authorized', async () => {
+    it('should transfer if sender and receiver authorized', async () => {
+      const amount = 100000;
       await babyDolz.setSender(user1.address, true);
-      await expect(babyDolz.connect(user1).transfer(user2.address, 100)).to.be.revertedWith(
-        'BabyDolz: transfer not authorized',
-      );
+      await babyDolz.setReceiver(user2.address, true);
+      await babyDolz.connect(user1).transfer(user2.address, amount);
+      expect(await babyDolz.balanceOf(user2.address)).equal(amount);
     });
 
     it('should not transfer if neither sender nor receiver are authorized', async () => {
