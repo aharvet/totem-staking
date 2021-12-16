@@ -75,7 +75,7 @@ contract BabyDolz is ERC20Bridgable {
             // If transfer is minting, checks that msg.sender is an authorized minter
             require(minters[msg.sender], "BabyDolz: sender is not an authorized minter");
         } else {
-            // Otherwise check that sender and receiver are authorized
+            // Otherwise check that sender or receiver are authorized
             require(senders[from] || receivers[to], "BabyDolz: transfer not authorized");
         }
     }
