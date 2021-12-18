@@ -20,6 +20,8 @@ describe('DolzChef', () => {
     token = await Token.deploy();
     babyDolz = await BabyDolz.deploy('BabyDolz', 'BBZ');
     dolzChef = await DolzChef.deploy(babyDolz.address);
+
+    await babyDolz.setMinter(dolzChef.address, true);
   });
 
   describe('Create pool', () => {
@@ -41,10 +43,10 @@ describe('DolzChef', () => {
     beforeEach(async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits(depositAmount.toString(), 18));
       await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await token.connect(user1).approve(dolzChef.address, ethers.constants.MaxUint256);
     });
 
     it('should deposit tokens', async () => {
-      await token.connect(user1).approve(dolzChef.address, depositAmount);
       await dolzChef.connect(user1).deposit(0, depositAmount);
 
       const block = (await ethers.provider.getBlock()).number;
@@ -52,6 +54,26 @@ describe('DolzChef', () => {
       expect(res.amount).equals(depositAmount);
       expect(res.rewardBlockStart).equals(block);
     });
+
+    // should not get reward when first deposit
+
+    it('should pay reward when deposit', async () => {
+      await dolzChef.connect(user1).deposit(0, depositAmount);
+      const blockStart = await getBlockNumber();
+      await advanceBlocks(10);
+      await dolzChef.connect(user1).deposit(0, 1000);
+      const blockEnd = await getBlockNumber();
+
+      const expectedReward = computeExpectedReward(
+        depositAmount,
+        rewardPerBlock,
+        blockEnd - blockStart,
+        amountPerReward,
+      );
+      expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
+    });
+
+    // should update block reward when deposit
   });
 
   describe('Withdraw reward', () => {
@@ -59,7 +81,6 @@ describe('DolzChef', () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
       await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
       await token.connect(user1).approve(dolzChef.address, depositAmount);
-      await babyDolz.setMinter(dolzChef.address, true);
       await dolzChef.connect(user1).deposit(0, depositAmount);
     });
 
@@ -69,10 +90,12 @@ describe('DolzChef', () => {
       await dolzChef.connect(user1).withdrawReward(0);
       const blockEnd = await getBlockNumber();
 
-      const expectedReward = depositAmount
-        .mul(rewardPerBlock)
-        .mul(blockEnd - blockStart)
-        .div(amountPerReward);
+      const expectedReward = computeExpectedReward(
+        depositAmount,
+        rewardPerBlock,
+        blockEnd - blockStart,
+        amountPerReward,
+      );
       expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
     });
 
@@ -88,8 +111,12 @@ describe('DolzChef', () => {
       await advanceBlocks(10);
       await dolzChef.connect(user1).withdrawReward(0);
 
-      // Multiplication by blocks elapsed removed because only advance from 1 block
-      const expectedReward = depositAmount.mul(rewardPerBlock).div(amountPerReward);
+      const expectedReward = computeExpectedReward(
+        depositAmount,
+        rewardPerBlock,
+        1,
+        amountPerReward,
+      );
       await expect(() => dolzChef.connect(user1).withdrawReward(0)).to.changeTokenBalance(
         babyDolz,
         user1,
@@ -107,4 +134,8 @@ async function advanceBlocks(amount) {
 
 async function getBlockNumber() {
   return (await ethers.provider.getBlock()).number;
+}
+
+function computeExpectedReward(depositAmount, rewardPerBlock, blocksElapsed, amountPerReward) {
+  return depositAmount.mul(rewardPerBlock).mul(blocksElapsed).div(amountPerReward);
 }
