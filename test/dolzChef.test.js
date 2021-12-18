@@ -107,7 +107,7 @@ describe('DolzChef', () => {
     });
   });
 
-  describe('Withdraw reward', () => {
+  describe('Harvest', () => {
     beforeEach(async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
       await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
@@ -118,7 +118,7 @@ describe('DolzChef', () => {
     it('should withdraw reward', async () => {
       const blockStart = await getBlockNumber();
       await advanceBlocks(10);
-      await dolzChef.connect(user1).withdrawReward(0);
+      await dolzChef.connect(user1).harvest(0);
       const blockEnd = await getBlockNumber();
 
       const expectedReward = computeExpectedReward(
@@ -132,7 +132,7 @@ describe('DolzChef', () => {
 
     it('should update deposit block after withdraw', async () => {
       await advanceBlocks(10);
-      await dolzChef.connect(user1).withdrawReward(0);
+      await dolzChef.connect(user1).harvest(0);
       const blockEnd = await getBlockNumber();
 
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(blockEnd);
@@ -140,7 +140,7 @@ describe('DolzChef', () => {
 
     it('should withdraw reward twice', async () => {
       await advanceBlocks(10);
-      await dolzChef.connect(user1).withdrawReward(0);
+      await dolzChef.connect(user1).harvest(0);
 
       const expectedReward = computeExpectedReward(
         depositAmount,
@@ -148,7 +148,7 @@ describe('DolzChef', () => {
         1,
         amountPerReward,
       );
-      await expect(() => dolzChef.connect(user1).withdrawReward(0)).to.changeTokenBalance(
+      await expect(() => dolzChef.connect(user1).harvest(0)).to.changeTokenBalance(
         babyDolz,
         user1,
         expectedReward,
