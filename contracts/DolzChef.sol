@@ -49,6 +49,13 @@ contract DolzChef is Ownable {
         IERC20(pools[poolId].token).transfer(msg.sender, amount);
     }
 
+    function computePendingReward(uint256 poolId, address account) external view returns (uint256) {
+        return
+            ((deposits[poolId][account].amount * pools[poolId].rewardPerBlock) *
+                (block.number - deposits[poolId][account].rewardBlockStart)) /
+            pools[poolId].amountPerReward;
+    }
+
     function harvest(uint256 poolId) public {
         uint256 reward = ((deposits[poolId][msg.sender].amount * pools[poolId].rewardPerBlock) *
             (block.number - deposits[poolId][msg.sender].rewardBlockStart)) /
