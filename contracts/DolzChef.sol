@@ -16,7 +16,7 @@ struct Pool {
 
 struct Deposit {
     uint256 amount;
-    uint256 block;
+    uint256 rewardBlockStart;
 }
 
 contract DolzChef is Ownable {
@@ -39,14 +39,15 @@ contract DolzChef is Ownable {
 
     function deposit(uint256 poolId, uint256 amount) external {
         deposits[poolId][msg.sender].amount += amount;
-        deposits[poolId][msg.sender].block = block.number;
+        deposits[poolId][msg.sender].rewardBlockStart = block.number;
         IERC20(pools[poolId].token).transferFrom(msg.sender, address(this), amount);
     }
 
     function withdrawReward(uint256 poolId) external {
         uint256 reward = ((deposits[poolId][msg.sender].amount * pools[poolId].rewardPerBlock) *
-            (block.number - deposits[poolId][msg.sender].block)) / pools[poolId].amountPerReward;
-        deposits[poolId][msg.sender].block = block.number;
+            (block.number - deposits[poolId][msg.sender].rewardBlockStart)) /
+            pools[poolId].amountPerReward;
+        deposits[poolId][msg.sender].rewardBlockStart = block.number;
         BabyDolz(babyDolz).mint(msg.sender, reward);
     }
 }

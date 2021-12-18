@@ -50,7 +50,7 @@ describe('DolzChef', () => {
       const block = (await ethers.provider.getBlock()).number;
       const res = await dolzChef.deposits(0, user1.address);
       expect(res.amount).equals(depositAmount);
-      expect(res.block).equals(block);
+      expect(res.rewardBlockStart).equals(block);
     });
   });
 
@@ -81,7 +81,20 @@ describe('DolzChef', () => {
       await dolzChef.connect(user1).withdrawReward(0);
       const blockEnd = await getBlockNumber();
 
-      expect((await dolzChef.deposits(0, user1.address)).block).equals(blockEnd);
+      expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(blockEnd);
+    });
+
+    it('should withdraw reward twice', async () => {
+      await advanceBlocks(10);
+      await dolzChef.connect(user1).withdrawReward(0);
+
+      // Multiplication by blocks elapsed removed because only advance from 1 block
+      const expectedReward = depositAmount.mul(rewardPerBlock).div(amountPerReward);
+      await expect(() => dolzChef.connect(user1).withdrawReward(0)).to.changeTokenBalance(
+        babyDolz,
+        user1,
+        expectedReward,
+      );
     });
   });
 });
