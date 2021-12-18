@@ -40,8 +40,13 @@ contract DolzChef is Ownable {
     function deposit(uint256 poolId, uint256 amount) external {
         withdrawReward(poolId);
         deposits[poolId][msg.sender].amount += amount;
-        // deposits[poolId][msg.sender].rewardBlockStart = block.number;
         IERC20(pools[poolId].token).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function withdraw(uint256 poolId, uint256 amount) external {
+        withdrawReward(poolId);
+        deposits[poolId][msg.sender].amount -= amount;
+        IERC20(pools[poolId].token).transfer(msg.sender, amount);
     }
 
     function withdrawReward(uint256 poolId) public {
