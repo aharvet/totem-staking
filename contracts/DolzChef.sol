@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.9;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./BabyDolz.sol";
+
+import "hardhat/console.sol";
+
+struct Pool {
+    address token;
+    uint256 amountPerReward;
+    uint256 rewardPerBlock;
+}
+
+struct Deposit {
+    uint256 amount;
+    uint256 block;
+}
+
+contract DolzChef is Ownable {
+    address public immutable babyDolz;
+    Pool[] public pools;
+
+    mapping(uint256 => mapping(address => Deposit)) public deposits;
+
+    constructor(address _babyDolz) {
+        babyDolz = _babyDolz;
+    }
+
+    function createPool(
+        address token,
+        uint256 amountPerReward,
+        uint256 rewardPerBlock
+    ) external onlyOwner {
+        pools.push(Pool(token, amountPerReward, rewardPerBlock));
+    }
+
+    function deposit(uint256 poolId, uint256 amount) external {
+        deposits[poolId][msg.sender].amount += amount;
+        deposits[poolId][msg.sender].block = block.number;
+        IERC20(pools[poolId].token).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function withdrawReward(uint256 poolId) external {
+        uint256 reward = ((deposits[poolId][msg.sender].amount * pools[poolId].rewardPerBlock) *
+            (block.number - deposits[poolId][msg.sender].block)) / pools[poolId].amountPerReward;
+        deposits[poolId][msg.sender].block = block.number;
+        BabyDolz(babyDolz).mint(msg.sender, reward);
+    }
+}

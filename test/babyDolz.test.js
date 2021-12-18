@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
-describe('BabyDolz', function () {
+describe('BabyDolz', () => {
   let owner, user1, user2;
   let babyDolz;
 
