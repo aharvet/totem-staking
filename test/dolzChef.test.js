@@ -129,6 +129,12 @@ describe('DolzChef', () => {
       );
       expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
     });
+
+    it('should not withdraw more that deposited', async () => {
+      await expect(dolzChef.connect(user1).withdraw(0, depositAmount.add(1))).to.be.revertedWith(
+        'Arithmetic operation underflowed or overflowed outside of an unchecked block',
+      );
+    });
   });
 
   describe('Pending reward', () => {
