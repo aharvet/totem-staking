@@ -1,6 +1,7 @@
 const { expect } = require('chai');
-const { ethers } = require('hardhat');
+const { ethers, waffle } = require('hardhat');
 const { BigNumber } = ethers;
+const { deployMockContract } = waffle;
 
 describe('DolzChef', () => {
   let owner, user1, user2; // users
@@ -30,6 +31,18 @@ describe('DolzChef', () => {
       const res = await dolzChef.pools(0);
       expect(res.token).equals(token.address);
       expect(res.rewardPerBlock).equals(rewardPerBlock);
+    });
+
+    it('should create two pools', async () => {
+      const secondToken = await deployMockContract(owner, []);
+      const secondAmountPerReward = 25783;
+      const secondRewardPerBlock = 98;
+
+      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(secondToken.address, secondAmountPerReward, secondRewardPerBlock);
+
+      expect((await dolzChef.pools(0)).token).equals(token.address);
+      expect((await dolzChef.pools(1)).token).equals(secondToken.address);
     });
 
     it('should not create a pool if not owner', async () => {
@@ -202,6 +215,49 @@ describe('DolzChef', () => {
         user1,
         expectedReward,
       );
+    });
+
+    it('should work for another user', async () => {
+      const newDepositAmount = BigNumber.from('2897325982989832489234');
+      await token.transfer(user2.address, ethers.utils.parseUnits('10000', 18));
+      await token.connect(user2).approve(dolzChef.address, newDepositAmount);
+      await dolzChef.connect(user2).deposit(0, newDepositAmount);
+
+      const blockStart = await getBlockNumber();
+      await advanceBlocks(10);
+      await dolzChef.connect(user2).harvest(0);
+      const blockEnd = await getBlockNumber();
+
+      const expectedReward = computeExpectedReward(
+        newDepositAmount,
+        rewardPerBlock,
+        blockEnd - blockStart,
+        amountPerReward,
+      );
+      expect(await babyDolz.balanceOf(user2.address)).equals(expectedReward);
+    });
+
+    it('should work with other values', async () => {
+      const newAmountPerReward = BigNumber.from('987324');
+      const newRewardPerBlock = BigNumber.from('726');
+      const newDepositAmount = BigNumber.from('8848787239857298');
+
+      await dolzChef.createPool(token.address, newAmountPerReward, newRewardPerBlock);
+      await token.connect(user1).approve(dolzChef.address, newDepositAmount);
+      await dolzChef.connect(user1).deposit(1, newDepositAmount);
+
+      const blockStart = await getBlockNumber();
+      await advanceBlocks(10);
+      await dolzChef.connect(user1).harvest(1);
+      const blockEnd = await getBlockNumber();
+
+      const expectedReward = computeExpectedReward(
+        newDepositAmount,
+        newRewardPerBlock,
+        blockEnd - blockStart,
+        newAmountPerReward,
+      );
+      expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
     });
   });
 });
