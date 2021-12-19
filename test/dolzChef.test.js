@@ -3,11 +3,33 @@ const { ethers, waffle } = require('hardhat');
 const { BigNumber } = ethers;
 const { deployMockContract } = waffle;
 
+async function increaseBlocks(amount) {
+  for (let i = 0; i < amount; i += 1) {
+    await ethers.provider.send('evm_mine');
+  }
+}
+
+async function increaseTime(secondes) {
+  await ethers.provider.send('evm_increaseTime', [secondes]);
+  await ethers.provider.send('evm_mine');
+}
+
+async function getBlockNumber() {
+  return (await ethers.provider.getBlock()).number;
+}
+
+function computeExpectedReward(depositAmount, rewardPerBlock, blocksElapsed, amountPerReward) {
+  return depositAmount.mul(rewardPerBlock).mul(blocksElapsed).div(amountPerReward);
+}
+
 describe('DolzChef', () => {
   let owner, user1, user2; // users
   let token, babyDolz, dolzChef; // contracts
   const amountPerReward = BigNumber.from('10000000');
   const rewardPerBlock = BigNumber.from('20000');
+  const depositFee = 2;
+  const minimumDeposit = 100000000;
+  const lockTime = 2629800; // 1 mois
   const depositAmount = BigNumber.from('100000000000000000000'); // 100 tokens
 
   before(async () => {
@@ -20,9 +42,47 @@ describe('DolzChef', () => {
     const DolzChef = await ethers.getContractFactory('DolzChef');
     token = await Token.deploy();
     babyDolz = await BabyDolz.deploy('BabyDolz', 'BBZ');
-    dolzChef = await DolzChef.deploy(babyDolz.address);
+    dolzChef = await DolzChef.deploy(babyDolz.address, depositFee, minimumDeposit, lockTime);
 
     await babyDolz.setMinter(dolzChef.address, true);
+  });
+
+  describe('Setters', () => {
+    it('should set deposit fee', async () => {
+      const value = 35;
+      await dolzChef.setDepositFee(value);
+      expect(await dolzChef.depositFee()).equals(value);
+    });
+
+    it('should not set deposit fee if not owner', async () => {
+      await expect(dolzChef.connect(user1).setDepositFee(9878)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+
+    it('should set minimum deposit', async () => {
+      const value = 20000000;
+      await dolzChef.setMinimumDeposit(value);
+      expect(await dolzChef.minimumDeposit()).equals(value);
+    });
+
+    it('should not set minimum deposit if not owner', async () => {
+      await expect(dolzChef.connect(user1).setMinimumDeposit(9878)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+
+    it('should set lock time', async () => {
+      const value = 9872;
+      await dolzChef.setLockTime(value);
+      expect(await dolzChef.lockTime()).equals(value);
+    });
+
+    it('should not set lock time if not owner', async () => {
+      await expect(dolzChef.connect(user1).setLockTime(9878)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
   });
 
   describe('Create pool', () => {
@@ -78,7 +138,7 @@ describe('DolzChef', () => {
     it('should get reward when deposit', async () => {
       await dolzChef.connect(user1).deposit(0, depositAmount);
       const blockStart = await getBlockNumber();
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user1).deposit(0, 1000);
       const blockEnd = await getBlockNumber();
 
@@ -93,7 +153,7 @@ describe('DolzChef', () => {
 
     it('should update reward block when deposit', async () => {
       await dolzChef.connect(user1).deposit(0, depositAmount);
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user1).deposit(0, depositAmount);
       const block = await getBlockNumber();
 
@@ -111,10 +171,11 @@ describe('DolzChef', () => {
       await token.connect(user1).approve(dolzChef.address, depositAmount);
       await dolzChef.connect(user1).deposit(0, depositAmount);
       blockStart = await getBlockNumber();
-      await advanceBlocks(10);
+      await increaseBlocks(10);
     });
 
     it('should withdraw tokens', async () => {
+      await increaseTime(lockTime);
       await expect(() => dolzChef.connect(user1).withdraw(0, withdrawAmount)).to.changeTokenBalance(
         token,
         user1,
@@ -126,12 +187,14 @@ describe('DolzChef', () => {
     });
 
     it('should update reward block when withdraw', async () => {
+      await increaseTime(lockTime);
       await dolzChef.connect(user1).withdraw(0, withdrawAmount);
       const block = await getBlockNumber();
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(block);
     });
 
     it('should get reward when withdraw', async () => {
+      await increaseTime(lockTime);
       await dolzChef.connect(user1).withdraw(0, withdrawAmount);
       const blockEnd = await getBlockNumber();
       const expectedReward = computeExpectedReward(
@@ -144,8 +207,15 @@ describe('DolzChef', () => {
     });
 
     it('should not withdraw more that deposited', async () => {
+      await increaseTime(lockTime);
       await expect(dolzChef.connect(user1).withdraw(0, depositAmount.add(1))).to.be.revertedWith(
         'Arithmetic operation underflowed or overflowed outside of an unchecked block',
+      );
+    });
+
+    it('should not withdraw before lock time end', async () => {
+      await expect(dolzChef.connect(user1).withdraw(0, 100)).to.be.revertedWith(
+        "DolzChef: can't withdraw before lock time end",
       );
     });
   });
@@ -157,7 +227,7 @@ describe('DolzChef', () => {
       await token.connect(user1).approve(dolzChef.address, depositAmount);
       await dolzChef.connect(user1).deposit(0, depositAmount);
       const blockStart = await getBlockNumber();
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       const blockEnd = await getBlockNumber();
       const expectedReward = computeExpectedReward(
         depositAmount,
@@ -179,7 +249,7 @@ describe('DolzChef', () => {
 
     it('should withdraw reward', async () => {
       const blockStart = await getBlockNumber();
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user1).harvest(0);
       const blockEnd = await getBlockNumber();
 
@@ -193,7 +263,7 @@ describe('DolzChef', () => {
     });
 
     it('should update deposit block after withdraw', async () => {
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user1).harvest(0);
       const blockEnd = await getBlockNumber();
 
@@ -201,7 +271,7 @@ describe('DolzChef', () => {
     });
 
     it('should not withdraw reward twice', async () => {
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user1).harvest(0);
 
       const expectedReward = computeExpectedReward(
@@ -224,7 +294,7 @@ describe('DolzChef', () => {
       await dolzChef.connect(user2).deposit(0, newDepositAmount);
 
       const blockStart = await getBlockNumber();
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user2).harvest(0);
       const blockEnd = await getBlockNumber();
 
@@ -247,7 +317,7 @@ describe('DolzChef', () => {
       await dolzChef.connect(user1).deposit(1, newDepositAmount);
 
       const blockStart = await getBlockNumber();
-      await advanceBlocks(10);
+      await increaseBlocks(10);
       await dolzChef.connect(user1).harvest(1);
       const blockEnd = await getBlockNumber();
 
@@ -261,17 +331,3 @@ describe('DolzChef', () => {
     });
   });
 });
-
-async function advanceBlocks(amount) {
-  for (let i = 0; i < amount; i += 1) {
-    await ethers.provider.send('evm_mine');
-  }
-}
-
-async function getBlockNumber() {
-  return (await ethers.provider.getBlock()).number;
-}
-
-function computeExpectedReward(depositAmount, rewardPerBlock, blocksElapsed, amountPerReward) {
-  return depositAmount.mul(rewardPerBlock).mul(blocksElapsed).div(amountPerReward);
-}

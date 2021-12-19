@@ -1,0 +1,1 @@
+- durée de lock en (en heures) (ex,  0, 3 mois, 6 mois) avant de pouvoir de-staker
