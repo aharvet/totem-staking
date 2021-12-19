@@ -152,7 +152,7 @@ describe('DolzChef', () => {
         blockEnd - blockStart,
         amountPerReward,
       );
-      expect(await dolzChef.computePendingReward(0, user1.address)).equals(expectedReward);
+      expect(await dolzChef.pendingReward(0, user1.address)).equals(expectedReward);
     });
   });
 

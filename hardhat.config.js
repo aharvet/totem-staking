@@ -7,7 +7,7 @@ require('solidity-coverage');
 
 // Macros
 const optimize = true;
-const showGasReporter = false;
+const showGasReporter = true;
 
 module.exports = {
   solidity: {
