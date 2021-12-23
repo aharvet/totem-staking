@@ -24,8 +24,6 @@ struct Deposit {
     uint256 lockTimeEnd;
 }
 
-// withdraw deposit fees
-
 contract DolzChef is Ownable {
     using SafeERC20 for IERC20;
 
@@ -72,11 +70,18 @@ contract DolzChef is Ownable {
     }
 
     function deposit(uint256 poolId, uint256 amount) external {
+        require(
+            amount >= pools[poolId].minimumDeposit,
+            "DolzChef: cannot deposit less that minimum deposit value"
+        );
+
         harvest(poolId);
+
         uint256 fees = (amount * pools[poolId].depositFee) / 1000;
         collectedFees[poolId] += fees;
         deposits[poolId][msg.sender].amount += amount - fees;
         deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + pools[poolId].lockTime;
+
         IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), amount);
     }
 

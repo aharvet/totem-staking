@@ -183,6 +183,12 @@ describe('DolzChef', () => {
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(block);
     });
 
+    it('should not deposit if under minimum deposit value', async () => {
+      await expect(dolzChef.connect(user1).deposit(0, minimumDeposit - 1)).to.be.revertedWith(
+        'DolzChef: cannot deposit less that minimum deposit value',
+      );
+    });
+
     it('should not get any reward when first deposit', async () => {
       await dolzChef.connect(user1).deposit(0, depositAmount);
       expect(await babyDolz.balanceOf(user1.address)).equals(0);
@@ -192,7 +198,7 @@ describe('DolzChef', () => {
       await dolzChef.connect(user1).deposit(0, depositAmount);
       const blockStart = await getBlockNumber();
       await increaseBlocks(10);
-      await dolzChef.connect(user1).deposit(0, 1000);
+      await dolzChef.connect(user1).deposit(0, minimumDeposit);
       const blockEnd = await getBlockNumber();
 
       const expectedReward = computeExpectedReward(
