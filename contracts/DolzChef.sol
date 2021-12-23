@@ -33,7 +33,21 @@ contract DolzChef is Ownable {
     mapping(uint256 => mapping(address => Deposit)) public deposits;
     mapping(uint256 => uint256) public collectedFees;
 
-    event DepositFeeUpdated(uint256 poolId, uint256 newDepositFee);
+    event DepositFeeUpdated(uint256 indexed poolId, uint256 newDepositFee);
+    event MinimumDepositUpdated(uint256 indexed poolId, uint256 newMinimumDeposit);
+    event LockTimeUpdated(uint256 indexed poolId, uint256 newLockTime);
+    event PoolCreated(
+        address indexed token,
+        uint256 amountPerReward,
+        uint256 rewardPerBlock,
+        uint256 depositFee,
+        uint256 minimumDeposit,
+        uint256 lockTime
+    );
+    event Deposited(uint256 indexed poolId, address indexed account, uint256 amount);
+    event Withdrew(uint256 indexed poolId, address indexed account, uint256 amount);
+    event WithdrewFees(uint256 indexed poolId, uint256 amount);
+    event Harvested(uint256 indexed poolId, address indexed account, uint256 amount);
 
     constructor(address _babyDolz) {
         babyDolz = _babyDolz;
@@ -44,12 +58,14 @@ contract DolzChef is Ownable {
         emit DepositFeeUpdated(poolId, newDepositFee);
     }
 
-    function setMinimumDeposit(uint256 poolId, uint256 minimumDeposit) external onlyOwner {
-        pools[poolId].minimumDeposit = minimumDeposit;
+    function setMinimumDeposit(uint256 poolId, uint256 newMinimumDeposit) external onlyOwner {
+        pools[poolId].minimumDeposit = newMinimumDeposit;
+        emit MinimumDepositUpdated(poolId, newMinimumDeposit);
     }
 
-    function setLockTime(uint256 poolId, uint256 lockTime) external onlyOwner {
-        pools[poolId].lockTime = lockTime;
+    function setLockTime(uint256 poolId, uint256 newLockTime) external onlyOwner {
+        pools[poolId].lockTime = newLockTime;
+        emit LockTimeUpdated(poolId, newLockTime);
     }
 
     function createPool(
@@ -70,32 +86,44 @@ contract DolzChef is Ownable {
                 lockTime: lockTime
             })
         );
+        emit PoolCreated(
+            token,
+            amountPerReward,
+            rewardPerBlock,
+            depositFee,
+            minimumDeposit,
+            lockTime
+        );
     }
 
-    function deposit(uint256 poolId, uint256 amount) external {
+    function deposit(uint256 poolId, uint256 depositAmount) external {
         require(
-            deposits[poolId][msg.sender].amount + amount >= pools[poolId].minimumDeposit,
+            deposits[poolId][msg.sender].amount + depositAmount >= pools[poolId].minimumDeposit,
             "DolzChef: cannot deposit less that minimum deposit value"
         );
 
         harvest(poolId);
 
-        uint256 fees = (amount * pools[poolId].depositFee) / 1000;
+        uint256 fees = (depositAmount * pools[poolId].depositFee) / 1000;
         collectedFees[poolId] += fees;
-        deposits[poolId][msg.sender].amount += amount - fees;
+        deposits[poolId][msg.sender].amount += depositAmount - fees;
         deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + pools[poolId].lockTime;
 
-        IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), amount);
+        emit Deposited(poolId, msg.sender, depositAmount);
+        IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), depositAmount);
     }
 
-    function withdraw(uint256 poolId, uint256 amount) external {
+    function withdraw(uint256 poolId, uint256 withdrawAmount) external {
         require(
             block.timestamp >= deposits[poolId][msg.sender].lockTimeEnd,
             "DolzChef: can't withdraw before lock time end"
         );
+
         harvest(poolId);
-        deposits[poolId][msg.sender].amount -= amount;
-        IERC20(pools[poolId].token).safeTransfer(msg.sender, amount);
+        deposits[poolId][msg.sender].amount -= withdrawAmount;
+
+        emit Withdrew(poolId, msg.sender, withdrawAmount);
+        IERC20(pools[poolId].token).safeTransfer(msg.sender, withdrawAmount);
     }
 
     function withdrawFees(
@@ -107,13 +135,18 @@ contract DolzChef is Ownable {
             amount <= collectedFees[poolId],
             "DolzChef: cannot withdraw more than collected fees"
         );
+
         collectedFees[poolId] -= amount;
+
+        emit WithdrewFees(poolId, amount);
         IERC20(pools[poolId].token).safeTransfer(receiver, amount);
     }
 
     function harvest(uint256 poolId) public {
         uint256 reward = pendingReward(poolId, msg.sender);
         deposits[poolId][msg.sender].rewardBlockStart = block.number;
+
+        emit Harvested(poolId, msg.sender, reward);
         BabyDolz(babyDolz).mint(msg.sender, reward);
     }
 
