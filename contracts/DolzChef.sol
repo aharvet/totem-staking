@@ -13,6 +13,9 @@ struct Pool {
     address token;
     uint256 amountPerReward;
     uint256 rewardPerBlock;
+    uint256 depositFee;
+    uint256 minimumDeposit;
+    uint256 lockTime;
 }
 
 struct Deposit {
@@ -27,52 +30,53 @@ contract DolzChef is Ownable {
     using SafeERC20 for IERC20;
 
     address public immutable babyDolz;
-    uint256 public depositFee;
-    uint256 public minimumDeposit;
-    uint256 public lockTime;
     Pool[] public pools;
 
     mapping(uint256 => mapping(address => Deposit)) public deposits;
     mapping(uint256 => uint256) public collectedFees;
 
-    constructor(
-        address _babyDolz,
-        uint256 _depositFee,
-        uint256 _minimumDeposit,
-        uint256 _lockTime
-    ) {
+    constructor(address _babyDolz) {
         babyDolz = _babyDolz;
-        depositFee = _depositFee;
-        minimumDeposit = _minimumDeposit;
-        lockTime = _lockTime;
     }
 
-    function setDepositFee(uint256 _depositFee) external onlyOwner {
-        depositFee = _depositFee;
+    function setDepositFee(uint256 poolId, uint256 depositFee) external onlyOwner {
+        pools[poolId].depositFee = depositFee;
     }
 
-    function setMinimumDeposit(uint256 _minimumDeposit) external onlyOwner {
-        minimumDeposit = _minimumDeposit;
+    function setMinimumDeposit(uint256 poolId, uint256 minimumDeposit) external onlyOwner {
+        pools[poolId].minimumDeposit = minimumDeposit;
     }
 
-    function setLockTime(uint256 _lockTime) external onlyOwner {
-        lockTime = _lockTime;
+    function setLockTime(uint256 poolId, uint256 lockTime) external onlyOwner {
+        pools[poolId].lockTime = lockTime;
     }
 
     function createPool(
         address token,
         uint256 amountPerReward,
-        uint256 rewardPerBlock
+        uint256 rewardPerBlock,
+        uint256 depositFee,
+        uint256 minimumDeposit,
+        uint256 lockTime
     ) external onlyOwner {
-        pools.push(Pool(token, amountPerReward, rewardPerBlock));
+        pools.push(
+            Pool({
+                token: token,
+                amountPerReward: amountPerReward,
+                rewardPerBlock: rewardPerBlock,
+                depositFee: depositFee,
+                minimumDeposit: minimumDeposit,
+                lockTime: lockTime
+            })
+        );
     }
 
     function deposit(uint256 poolId, uint256 amount) external {
         harvest(poolId);
-        uint256 depositFees = (amount * depositFee) / 1000;
-        collectedFees[poolId] += depositFees;
-        deposits[poolId][msg.sender].amount += amount - depositFees;
-        deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + lockTime;
+        uint256 fees = (amount * pools[poolId].depositFee) / 1000;
+        collectedFees[poolId] += fees;
+        deposits[poolId][msg.sender].amount += amount - fees;
+        deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + pools[poolId].lockTime;
         IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), amount);
     }
 

@@ -47,44 +47,55 @@ describe('DolzChef', () => {
     const DolzChef = await ethers.getContractFactory('DolzChef');
     token = await Token.deploy();
     babyDolz = await BabyDolz.deploy('BabyDolz', 'BBZ');
-    dolzChef = await DolzChef.deploy(babyDolz.address, depositFee, minimumDeposit, lockTime);
+    dolzChef = await DolzChef.deploy(babyDolz.address);
 
     await babyDolz.setMinter(dolzChef.address, true);
   });
 
   describe('Setters', () => {
+    beforeEach(async () => {
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
+    });
+
     it('should set deposit fee', async () => {
       const value = 35;
-      await dolzChef.setDepositFee(value);
-      expect(await dolzChef.depositFee()).equals(value);
+      await dolzChef.setDepositFee(0, value);
+      expect((await dolzChef.pools(0)).depositFee).equals(value);
     });
 
     it('should not set deposit fee if not owner', async () => {
-      await expect(dolzChef.connect(user1).setDepositFee(9878)).to.be.revertedWith(
+      await expect(dolzChef.connect(user1).setDepositFee(0, 9878)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
     });
 
     it('should set minimum deposit', async () => {
       const value = 20000000;
-      await dolzChef.setMinimumDeposit(value);
-      expect(await dolzChef.minimumDeposit()).equals(value);
+      await dolzChef.setMinimumDeposit(0, value);
+      expect((await dolzChef.pools(0)).minimumDeposit).equals(value);
     });
 
     it('should not set minimum deposit if not owner', async () => {
-      await expect(dolzChef.connect(user1).setMinimumDeposit(9878)).to.be.revertedWith(
+      await expect(dolzChef.connect(user1).setMinimumDeposit(0, 9878)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
     });
 
     it('should set lock time', async () => {
       const value = 9872;
-      await dolzChef.setLockTime(value);
-      expect(await dolzChef.lockTime()).equals(value);
+      await dolzChef.setLockTime(0, value);
+      expect((await dolzChef.pools(0)).lockTime).equals(value);
     });
 
     it('should not set lock time if not owner', async () => {
-      await expect(dolzChef.connect(user1).setLockTime(9878)).to.be.revertedWith(
+      await expect(dolzChef.connect(user1).setLockTime(0, 9878)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
     });
@@ -92,7 +103,14 @@ describe('DolzChef', () => {
 
   describe('Create pool', () => {
     it('should create a pool', async () => {
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       const res = await dolzChef.pools(0);
       expect(res.token).equals(token.address);
       expect(res.rewardPerBlock).equals(rewardPerBlock);
@@ -103,8 +121,22 @@ describe('DolzChef', () => {
       const secondAmountPerReward = 25783;
       const secondRewardPerBlock = 98;
 
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
-      await dolzChef.createPool(secondToken.address, secondAmountPerReward, secondRewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
+      await dolzChef.createPool(
+        secondToken.address,
+        secondAmountPerReward,
+        secondRewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
 
       expect((await dolzChef.pools(0)).token).equals(token.address);
       expect((await dolzChef.pools(1)).token).equals(secondToken.address);
@@ -112,7 +144,16 @@ describe('DolzChef', () => {
 
     it('should not create a pool if not owner', async () => {
       await expect(
-        dolzChef.connect(user1).createPool(token.address, amountPerReward, rewardPerBlock),
+        dolzChef
+          .connect(user1)
+          .createPool(
+            token.address,
+            amountPerReward,
+            rewardPerBlock,
+            depositFee,
+            minimumDeposit,
+            lockTime,
+          ),
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
   });
@@ -120,7 +161,14 @@ describe('DolzChef', () => {
   describe('Deposit', () => {
     beforeEach(async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits(depositAmount.toString(), 18));
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       await token.connect(user1).approve(dolzChef.address, ethers.constants.MaxUint256);
     });
 
@@ -155,10 +203,35 @@ describe('DolzChef', () => {
       );
       expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
     });
+  });
+
+  describe('Deposit fees', () => {
+    beforeEach(async () => {
+      await token.transfer(user1.address, ethers.utils.parseUnits(depositAmount.toString(), 18));
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
+      await token.connect(user1).approve(dolzChef.address, ethers.constants.MaxUint256);
+    });
 
     it('should collect fees when deposit', async () => {
       await dolzChef.connect(user1).deposit(0, depositAmount);
+
       const expectedFees = computeDepositFee(depositAmount, depositFee);
+      expect(await dolzChef.collectedFees(0)).equals(expectedFees);
+    });
+
+    it('should collect fees with a different value', async () => {
+      const newDepositFee = 235;
+      await dolzChef.setDepositFee(0, newDepositFee);
+      await dolzChef.connect(user1).deposit(0, depositAmount);
+
+      const expectedFees = computeDepositFee(depositAmount, newDepositFee);
       expect(await dolzChef.collectedFees(0)).equals(expectedFees);
     });
   });
@@ -169,7 +242,14 @@ describe('DolzChef', () => {
 
     beforeEach(async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       await token.connect(user1).approve(dolzChef.address, depositAmount);
       await dolzChef.connect(user1).deposit(0, depositAmount);
       blockStart = await getBlockNumber();
@@ -225,7 +305,14 @@ describe('DolzChef', () => {
   describe('Pending reward', () => {
     it('should return pending reward', async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       await token.connect(user1).approve(dolzChef.address, depositAmount);
 
       await dolzChef.connect(user1).deposit(0, depositAmount);
@@ -246,7 +333,14 @@ describe('DolzChef', () => {
   describe('Harvest', () => {
     beforeEach(async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       await token.connect(user1).approve(dolzChef.address, depositAmount);
       await dolzChef.connect(user1).deposit(0, depositAmount);
     });
@@ -322,7 +416,14 @@ describe('DolzChef', () => {
         computeDepositFee(newDepositAmount, depositFee),
       );
 
-      await dolzChef.createPool(token.address, newAmountPerReward, newRewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        newAmountPerReward,
+        newRewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       await token.connect(user1).approve(dolzChef.address, newDepositAmount);
       await dolzChef.connect(user1).deposit(1, newDepositAmount);
 
@@ -344,7 +445,14 @@ describe('DolzChef', () => {
   describe('Withdraw fees', () => {
     beforeEach(async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
-      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
       await token.connect(user1).approve(dolzChef.address, depositAmount);
       await dolzChef.connect(user1).deposit(0, depositAmount);
     });
