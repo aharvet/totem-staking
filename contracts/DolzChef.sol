@@ -21,6 +21,8 @@ struct Deposit {
     uint256 lockTimeEnd;
 }
 
+// withdraw deposit fees
+
 contract DolzChef is Ownable {
     using SafeERC20 for IERC20;
 
@@ -66,7 +68,7 @@ contract DolzChef is Ownable {
 
     function deposit(uint256 poolId, uint256 amount) external {
         harvest(poolId);
-        deposits[poolId][msg.sender].amount += amount;
+        deposits[poolId][msg.sender].amount += amount - ((amount * depositFee) / 1000);
         deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + lockTime;
         IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -81,16 +83,16 @@ contract DolzChef is Ownable {
         IERC20(pools[poolId].token).safeTransfer(msg.sender, amount);
     }
 
+    function harvest(uint256 poolId) public {
+        uint256 reward = pendingReward(poolId, msg.sender);
+        deposits[poolId][msg.sender].rewardBlockStart = block.number;
+        BabyDolz(babyDolz).mint(msg.sender, reward);
+    }
+
     function pendingReward(uint256 poolId, address account) public view returns (uint256) {
         return
             ((deposits[poolId][account].amount * pools[poolId].rewardPerBlock) *
                 (block.number - deposits[poolId][account].rewardBlockStart)) /
             pools[poolId].amountPerReward;
-    }
-
-    function harvest(uint256 poolId) public {
-        uint256 reward = pendingReward(poolId, msg.sender);
-        deposits[poolId][msg.sender].rewardBlockStart = block.number;
-        BabyDolz(babyDolz).mint(msg.sender, reward);
     }
 }
