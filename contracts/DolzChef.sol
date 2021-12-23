@@ -33,12 +33,15 @@ contract DolzChef is Ownable {
     mapping(uint256 => mapping(address => Deposit)) public deposits;
     mapping(uint256 => uint256) public collectedFees;
 
+    event DepositFeeUpdated(uint256 poolId, uint256 newDepositFee);
+
     constructor(address _babyDolz) {
         babyDolz = _babyDolz;
     }
 
-    function setDepositFee(uint256 poolId, uint256 depositFee) external onlyOwner {
-        pools[poolId].depositFee = depositFee;
+    function setDepositFee(uint256 poolId, uint256 newDepositFee) external onlyOwner {
+        pools[poolId].depositFee = newDepositFee;
+        emit DepositFeeUpdated(poolId, newDepositFee);
     }
 
     function setMinimumDeposit(uint256 poolId, uint256 minimumDeposit) external onlyOwner {
@@ -71,7 +74,7 @@ contract DolzChef is Ownable {
 
     function deposit(uint256 poolId, uint256 amount) external {
         require(
-            amount >= pools[poolId].minimumDeposit,
+            deposits[poolId][msg.sender].amount + amount >= pools[poolId].minimumDeposit,
             "DolzChef: cannot deposit less that minimum deposit value"
         );
 

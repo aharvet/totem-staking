@@ -32,7 +32,7 @@ describe('DolzChef', () => {
   const amountPerReward = BigNumber.from('10000000');
   const rewardPerBlock = BigNumber.from('20000');
   const depositFee = 2;
-  const minimumDeposit = 100000000;
+  const minimumDeposit = BigNumber.from('100000000');
   const lockTime = 2629800; // 1 mois
   const depositAmount = BigNumber.from('100000000000000000000'); // 100 tokens
   const effectiveDepositAmount = depositAmount.sub(computeDepositFee(depositAmount, depositFee));
@@ -68,6 +68,13 @@ describe('DolzChef', () => {
       const value = 35;
       await dolzChef.setDepositFee(0, value);
       expect((await dolzChef.pools(0)).depositFee).equals(value);
+    });
+
+    it('should emit event when update deposit fee', async () => {
+      const value = 35;
+      await expect(dolzChef.setDepositFee(0, value))
+        .to.emit(dolzChef, 'DepositFeeUpdated')
+        .withArgs(0, value);
     });
 
     it('should not set deposit fee if not owner', async () => {
@@ -187,6 +194,15 @@ describe('DolzChef', () => {
       await expect(dolzChef.connect(user1).deposit(0, minimumDeposit - 1)).to.be.revertedWith(
         'DolzChef: cannot deposit less that minimum deposit value',
       );
+    });
+
+    it('should deposit exact minimum deposit value', async () => {
+      await dolzChef.connect(user1).deposit(0, minimumDeposit);
+    });
+
+    it.only('should deposit small amount if minimum deposit value already deposited', async () => {
+      await dolzChef.connect(user1).deposit(0, minimumDeposit);
+      await dolzChef.connect(user1).deposit(0, minimumDeposit.sub(200));
     });
 
     it('should not get any reward when first deposit', async () => {
