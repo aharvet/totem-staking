@@ -33,6 +33,7 @@ contract DolzChef is Ownable {
     Pool[] public pools;
 
     mapping(uint256 => mapping(address => Deposit)) public deposits;
+    mapping(uint256 => uint256) public collectedFees;
 
     constructor(
         address _babyDolz,
@@ -68,7 +69,9 @@ contract DolzChef is Ownable {
 
     function deposit(uint256 poolId, uint256 amount) external {
         harvest(poolId);
-        deposits[poolId][msg.sender].amount += amount - ((amount * depositFee) / 1000);
+        uint256 depositFees = (amount * depositFee) / 1000;
+        collectedFees[poolId] += depositFees;
+        deposits[poolId][msg.sender].amount += amount - depositFees;
         deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + lockTime;
         IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -81,6 +84,18 @@ contract DolzChef is Ownable {
         harvest(poolId);
         deposits[poolId][msg.sender].amount -= amount;
         IERC20(pools[poolId].token).safeTransfer(msg.sender, amount);
+    }
+
+    function withdrawFees(
+        uint256 poolId,
+        address receiver,
+        uint256 amount
+    ) external onlyOwner {
+        require(
+            amount <= collectedFees[poolId],
+            "DolzChef: cannot withdraw more than collected fees"
+        );
+        IERC20(pools[poolId].token).safeTransfer(receiver, amount);
     }
 
     function harvest(uint256 poolId) public {

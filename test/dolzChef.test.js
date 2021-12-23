@@ -155,6 +155,12 @@ describe('DolzChef', () => {
       );
       expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
     });
+
+    it('should collect fees when deposit', async () => {
+      await dolzChef.connect(user1).deposit(0, depositAmount);
+      const expectedFees = computeDepositFee(depositAmount, depositFee);
+      expect(await dolzChef.collectedFees(0)).equals(expectedFees);
+    });
   });
 
   describe('Withdraw', () => {
@@ -332,6 +338,34 @@ describe('DolzChef', () => {
         newAmountPerReward,
       );
       expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
+    });
+  });
+
+  describe('Withdraw fees', () => {
+    beforeEach(async () => {
+      await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
+      await dolzChef.createPool(token.address, amountPerReward, rewardPerBlock);
+      await token.connect(user1).approve(dolzChef.address, depositAmount);
+      await dolzChef.connect(user1).deposit(0, depositAmount);
+    });
+
+    it('should withdraw fees', async () => {
+      const expectedFees = computeDepositFee(depositAmount, depositFee);
+      await dolzChef.withdrawFees(0, user2.address, expectedFees);
+      expect(await token.balanceOf(user2.address)).equals(expectedFees);
+    });
+
+    it('should not withdraw more than fees collected', async () => {
+      const expectedFees = computeDepositFee(depositAmount, depositFee);
+      await expect(dolzChef.withdrawFees(0, user2.address, expectedFees.add(1))).to.be.revertedWith(
+        'DolzChef: cannot withdraw more than collected fees',
+      );
+    });
+
+    it('should not withdraw fees if not owner', async () => {
+      await expect(dolzChef.connect(user1).withdrawFees(0, user2.address, 1)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
     });
   });
 });
