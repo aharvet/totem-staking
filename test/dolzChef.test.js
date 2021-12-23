@@ -476,6 +476,14 @@ describe('DolzChef', () => {
       );
     });
 
+    it('should not withdraw fees twice', async () => {
+      const expectedFees = computeDepositFee(depositAmount, depositFee);
+      await dolzChef.withdrawFees(0, user2.address, expectedFees);
+      await expect(dolzChef.withdrawFees(0, user2.address, 1)).to.be.revertedWith(
+        'DolzChef: cannot withdraw more than collected fees',
+      );
+    });
+
     it('should not withdraw fees if not owner', async () => {
       await expect(dolzChef.connect(user1).withdrawFees(0, user2.address, 1)).to.be.revertedWith(
         'Ownable: caller is not the owner',

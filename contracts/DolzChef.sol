@@ -104,6 +104,7 @@ contract DolzChef is Ownable {
             amount <= collectedFees[poolId],
             "DolzChef: cannot withdraw more than collected fees"
         );
+        collectedFees[poolId] -= amount;
         IERC20(pools[poolId].token).safeTransfer(receiver, amount);
     }
 
