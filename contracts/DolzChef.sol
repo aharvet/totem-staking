@@ -97,17 +97,19 @@ contract DolzChef is Ownable {
     }
 
     function deposit(uint256 poolId, uint176 depositAmount) external {
+        Pool memory pool = pools[poolId]; // gas savings
+
         require(
-            deposits[poolId][msg.sender].amount + depositAmount >= pools[poolId].minimumDeposit,
+            deposits[poolId][msg.sender].amount + depositAmount >= pool.minimumDeposit,
             "DolzChef: cannot deposit less that minimum deposit value"
         );
 
         harvest(poolId);
 
-        uint176 fees = (depositAmount * pools[poolId].depositFee) / 1000;
+        uint176 fees = (depositAmount * pool.depositFee) / 1000;
         collectedFees[poolId] += fees;
         deposits[poolId][msg.sender].amount += depositAmount - fees;
-        deposits[poolId][msg.sender].lockTimeEnd = uint40(block.timestamp + pools[poolId].lockTime);
+        deposits[poolId][msg.sender].lockTimeEnd = uint40(block.timestamp + pool.lockTime);
 
         emit Deposited(poolId, msg.sender, depositAmount);
         IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), depositAmount);
@@ -151,9 +153,9 @@ contract DolzChef is Ownable {
     }
 
     function pendingReward(uint256 poolId, address account) public view returns (uint256) {
+        Deposit memory deposited = deposits[poolId][account]; // gas savings
         return
-            ((deposits[poolId][account].amount * pools[poolId].rewardPerBlock) *
-                (block.number - deposits[poolId][account].rewardBlockStart)) /
-            pools[poolId].amountPerReward;
+            ((deposited.amount * pools[poolId].rewardPerBlock) *
+                (block.number - deposited.rewardBlockStart)) / pools[poolId].amountPerReward;
     }
 }
