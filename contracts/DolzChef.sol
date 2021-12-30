@@ -11,17 +11,17 @@ import "hardhat/console.sol";
 
 struct Pool {
     address token;
-    uint256 amountPerReward;
-    uint256 rewardPerBlock;
-    uint256 depositFee;
-    uint256 minimumDeposit;
-    uint256 lockTime;
+    uint32 lockTime;
+    uint64 amountPerReward;
+    uint40 rewardPerBlock;
+    uint72 minimumDeposit;
+    uint144 depositFee;
 }
 
 struct Deposit {
-    uint256 amount;
-    uint256 rewardBlockStart;
-    uint256 lockTimeEnd;
+    uint176 amount;
+    uint40 rewardBlockStart;
+    uint40 lockTimeEnd;
 }
 
 contract DolzChef is Ownable {
@@ -53,28 +53,28 @@ contract DolzChef is Ownable {
         babyDolz = _babyDolz;
     }
 
-    function setDepositFee(uint256 poolId, uint256 newDepositFee) external onlyOwner {
+    function setDepositFee(uint256 poolId, uint144 newDepositFee) external onlyOwner {
         pools[poolId].depositFee = newDepositFee;
         emit DepositFeeUpdated(poolId, newDepositFee);
     }
 
-    function setMinimumDeposit(uint256 poolId, uint256 newMinimumDeposit) external onlyOwner {
+    function setMinimumDeposit(uint256 poolId, uint72 newMinimumDeposit) external onlyOwner {
         pools[poolId].minimumDeposit = newMinimumDeposit;
         emit MinimumDepositUpdated(poolId, newMinimumDeposit);
     }
 
-    function setLockTime(uint256 poolId, uint256 newLockTime) external onlyOwner {
+    function setLockTime(uint256 poolId, uint32 newLockTime) external onlyOwner {
         pools[poolId].lockTime = newLockTime;
         emit LockTimeUpdated(poolId, newLockTime);
     }
 
     function createPool(
         address token,
-        uint256 amountPerReward,
-        uint256 rewardPerBlock,
-        uint256 depositFee,
-        uint256 minimumDeposit,
-        uint256 lockTime
+        uint64 amountPerReward,
+        uint40 rewardPerBlock,
+        uint144 depositFee,
+        uint72 minimumDeposit,
+        uint32 lockTime
     ) external onlyOwner {
         pools.push(
             Pool({
@@ -96,7 +96,7 @@ contract DolzChef is Ownable {
         );
     }
 
-    function deposit(uint256 poolId, uint256 depositAmount) external {
+    function deposit(uint256 poolId, uint176 depositAmount) external {
         require(
             deposits[poolId][msg.sender].amount + depositAmount >= pools[poolId].minimumDeposit,
             "DolzChef: cannot deposit less that minimum deposit value"
@@ -104,16 +104,16 @@ contract DolzChef is Ownable {
 
         harvest(poolId);
 
-        uint256 fees = (depositAmount * pools[poolId].depositFee) / 1000;
+        uint176 fees = (depositAmount * pools[poolId].depositFee) / 1000;
         collectedFees[poolId] += fees;
         deposits[poolId][msg.sender].amount += depositAmount - fees;
-        deposits[poolId][msg.sender].lockTimeEnd = block.timestamp + pools[poolId].lockTime;
+        deposits[poolId][msg.sender].lockTimeEnd = uint40(block.timestamp + pools[poolId].lockTime);
 
         emit Deposited(poolId, msg.sender, depositAmount);
         IERC20(pools[poolId].token).safeTransferFrom(msg.sender, address(this), depositAmount);
     }
 
-    function withdraw(uint256 poolId, uint256 withdrawAmount) external {
+    function withdraw(uint256 poolId, uint176 withdrawAmount) external {
         require(
             block.timestamp >= deposits[poolId][msg.sender].lockTimeEnd,
             "DolzChef: can't withdraw before lock time end"
@@ -144,7 +144,7 @@ contract DolzChef is Ownable {
 
     function harvest(uint256 poolId) public {
         uint256 reward = pendingReward(poolId, msg.sender);
-        deposits[poolId][msg.sender].rewardBlockStart = block.number;
+        deposits[poolId][msg.sender].rewardBlockStart = uint40(block.number);
 
         emit Harvested(poolId, msg.sender, reward);
         BabyDolz(babyDolz).mint(msg.sender, reward);
