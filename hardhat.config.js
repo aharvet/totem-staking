@@ -11,7 +11,7 @@ const showGasReporter = true;
 
 module.exports = {
   solidity: {
-    version: '0.8.9',
+    version: '0.8.10',
     settings: {
       optimizer: {
         enabled: optimize || showGasReporter || false,
