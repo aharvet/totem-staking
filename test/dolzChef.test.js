@@ -226,6 +226,12 @@ describe('DolzChef', () => {
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(block);
     });
 
+    it.only('should update locktime end when deposit', async () => {
+      const tx = await dolzChef.connect(user1).deposit(0, depositAmount);
+      const { timestamp } = await ethers.provider.getBlock(tx.blockHash);
+      expect((await dolzChef.deposits(0, user1.address)).lockTimeEnd).equals(timestamp + lockTime);
+    });
+
     it('should emit an event when deposit', async () => {
       await expect(await dolzChef.connect(user1).deposit(0, depositAmount))
         .to.emit(dolzChef, 'Deposited')
