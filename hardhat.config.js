@@ -6,8 +6,8 @@ require('@nomiclabs/hardhat-etherscan');
 require('solidity-coverage');
 
 // Macros
-const optimize = false;
-const showGasReporter = false;
+const optimize = true;
+const showGasReporter = true;
 
 module.exports = {
   solidity: {

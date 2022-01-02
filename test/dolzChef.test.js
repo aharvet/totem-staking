@@ -117,7 +117,7 @@ describe('DolzChef', () => {
 
     it('should not update deposit fee if value is greater than 1000', async () => {
       await expect(dolzChef.setDepositFee(0, 1001)).to.be.revertedWith(
-        'DolzChef: percentage should be equal or lower than 1000',
+        'DolzChef: percentage should be equal to or lower than 1000',
       );
     });
 
@@ -227,6 +227,19 @@ describe('DolzChef', () => {
 
       expect((await dolzChef.pools(0)).token).equals(token.address);
       expect((await dolzChef.pools(1)).token).equals(secondToken.address);
+    });
+
+    it('should not create if deposit fee greater than 1000', async () => {
+      await expect(
+        dolzChef.createPool(
+          token.address,
+          amountPerReward,
+          rewardPerBlock,
+          1001,
+          minimumDeposit,
+          lockTime,
+        ),
+      ).to.be.revertedWith('DolzChef: percentage should be equal to or lower than 1000');
     });
 
     it('should not create a pool if not owner', async () => {

@@ -71,6 +71,14 @@ contract DolzChef is Ownable {
     event Harvested(uint256 indexed poolId, address indexed account, uint256 amount);
 
     /**
+     @notice Check that percentage is less or equal to 1000 to not exceed 100.0%
+     */
+    modifier checkPercentage(uint256 percentage) {
+        require(percentage <= 1000, "DolzChef: percentage should be equal to or lower than 1000");
+        _;
+    }
+
+    /**
      * @param _babyDolz Address of the BabyDolz token that users will be rewarded with.
      */
     constructor(address _babyDolz) {
@@ -106,9 +114,11 @@ contract DolzChef is Ownable {
      * @param newDepositFee New percentage of the deposit that is collected by the pool, with one decimal.
      * Eg. for 34.3 percents, depositFee will have a value of 343
      */
-    function setDepositFee(uint256 poolId, uint144 newDepositFee) external onlyOwner {
-        // Checks that that percentage is less or equal to 1000 to not exceed 100.0%
-        require(newDepositFee <= 1000, "DolzChef: percentage should be equal or lower than 1000");
+    function setDepositFee(uint256 poolId, uint144 newDepositFee)
+        external
+        onlyOwner
+        checkPercentage(newDepositFee)
+    {
         pools[poolId].depositFee = newDepositFee;
         emit DepositFeeUpdated(poolId, newDepositFee);
     }
@@ -153,7 +163,7 @@ contract DolzChef is Ownable {
         uint144 depositFee,
         uint72 minimumDeposit,
         uint32 lockTime
-    ) external onlyOwner {
+    ) external onlyOwner checkPercentage(depositFee) {
         pools.push(
             Pool({
                 token: token,
