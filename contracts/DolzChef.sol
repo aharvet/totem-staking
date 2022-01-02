@@ -52,6 +52,8 @@ contract DolzChef is Ownable {
     // Associate pool id to the amount of fees collected
     mapping(uint256 => uint256) public collectedFees;
 
+    event AmountPerRewardUpdated(uint256 indexed poolId, uint256 newAmountPerReward);
+    event RewardPerBlockUpdated(uint256 indexed poolId, uint256 newRewardPerBlock);
     event DepositFeeUpdated(uint256 indexed poolId, uint256 newDepositFee);
     event MinimumDepositUpdated(uint256 indexed poolId, uint256 newMinimumDeposit);
     event LockTimeUpdated(uint256 indexed poolId, uint256 newLockTime);
@@ -76,6 +78,28 @@ contract DolzChef is Ownable {
     }
 
     /**
+     * @notice Enable to update the amount of tokens that give access to 1 reward every block for a specific pool.
+     * @dev Only accessible to owner.
+     * @param poolId Id of the pool to update.
+     * @param newAmountPerReward New amount of tokens that give access to 1 reward
+     */
+    function setAmountPerReward(uint256 poolId, uint64 newAmountPerReward) external onlyOwner {
+        pools[poolId].amountPerReward = newAmountPerReward;
+        emit AmountPerRewardUpdated(poolId, newAmountPerReward);
+    }
+
+    /**
+     * @notice Enable to update the amount of BabyDolz received as staking reward every block for a specific pool.
+     * @dev Only accessible to owner.
+     * @param poolId Id of the pool to update.
+     * @param newRewardPerBlock New amount of BabyDolz received as staking reward every block.
+     */
+    function setRewardPerBlock(uint256 poolId, uint40 newRewardPerBlock) external onlyOwner {
+        pools[poolId].rewardPerBlock = newRewardPerBlock;
+        emit RewardPerBlockUpdated(poolId, newRewardPerBlock);
+    }
+
+    /**
      * @notice Enable to update the deposit fee of a specific pool.
      * @dev Only accessible to owner.
      * @param poolId Id of the pool to update.
@@ -83,6 +107,8 @@ contract DolzChef is Ownable {
      * Eg. for 34.3 percents, depositFee will have a value of 343
      */
     function setDepositFee(uint256 poolId, uint144 newDepositFee) external onlyOwner {
+        // Checks that that percentage is less or equal to 1000 to not exceed 100.0%
+        require(newDepositFee <= 1000, "DolzChef: percentage should be equal or lower than 1000");
         pools[poolId].depositFee = newDepositFee;
         emit DepositFeeUpdated(poolId, newDepositFee);
     }

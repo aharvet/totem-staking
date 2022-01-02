@@ -64,6 +64,44 @@ describe('DolzChef', () => {
       );
     });
 
+    it('should set amount per reward', async () => {
+      const value = 35;
+      await dolzChef.setAmountPerReward(0, value);
+      expect((await dolzChef.pools(0)).amountPerReward).equals(value);
+    });
+
+    it('should emit event when amount per reward', async () => {
+      const value = 35;
+      await expect(dolzChef.setAmountPerReward(0, value))
+        .to.emit(dolzChef, 'AmountPerRewardUpdated')
+        .withArgs(0, value);
+    });
+
+    it('should not set amount per reward if not owner', async () => {
+      await expect(dolzChef.connect(user1).setAmountPerReward(0, 987)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+
+    it('should set reward per block', async () => {
+      const value = 35;
+      await dolzChef.setRewardPerBlock(0, value);
+      expect((await dolzChef.pools(0)).rewardPerBlock).equals(value);
+    });
+
+    it('should emit event when update reward per block', async () => {
+      const value = 35;
+      await expect(dolzChef.setRewardPerBlock(0, value))
+        .to.emit(dolzChef, 'RewardPerBlockUpdated')
+        .withArgs(0, value);
+    });
+
+    it('should not set reward per block if not owner', async () => {
+      await expect(dolzChef.connect(user1).setRewardPerBlock(0, 9878)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+
     it('should set deposit fee', async () => {
       const value = 35;
       await dolzChef.setDepositFee(0, value);
@@ -77,8 +115,14 @@ describe('DolzChef', () => {
         .withArgs(0, value);
     });
 
+    it('should not update deposit fee if value is greater than 1000', async () => {
+      await expect(dolzChef.setDepositFee(0, 1001)).to.be.revertedWith(
+        'DolzChef: percentage should be equal or lower than 1000',
+      );
+    });
+
     it('should not set deposit fee if not owner', async () => {
-      await expect(dolzChef.connect(user1).setDepositFee(0, 9878)).to.be.revertedWith(
+      await expect(dolzChef.connect(user1).setDepositFee(0, 988)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
     });
