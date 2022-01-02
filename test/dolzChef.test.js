@@ -226,7 +226,7 @@ describe('DolzChef', () => {
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(block);
     });
 
-    it.only('should update locktime end when deposit', async () => {
+    it('should update locktime end when deposit', async () => {
       const tx = await dolzChef.connect(user1).deposit(0, depositAmount);
       const { timestamp } = await ethers.provider.getBlock(tx.blockHash);
       expect((await dolzChef.deposits(0, user1.address)).lockTimeEnd).equals(timestamp + lockTime);
