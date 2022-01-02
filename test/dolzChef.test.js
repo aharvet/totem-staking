@@ -229,6 +229,18 @@ describe('DolzChef', () => {
       expect((await dolzChef.pools(1)).token).equals(secondToken.address);
     });
 
+    // it('should update token to pool id mapping', async () => {
+    //   await dolzChef.createPool(
+    //     token.address,
+    //     amountPerReward,
+    //     rewardPerBlock,
+    //     depositFee,
+    //     minimumDeposit,
+    //     lockTime,
+    //   );
+    //   expect(await dolzChef.tokenToPoolId(token.address)).equals(0);
+    // });
+
     it('should not create if deposit fee greater than 1000', async () => {
       await expect(
         dolzChef.createPool(
@@ -255,6 +267,21 @@ describe('DolzChef', () => {
             lockTime,
           ),
       ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('should get number of pools', async () => {
+      const numberOfPools = 2;
+      for (let i = 0; i < numberOfPools; i += 1) {
+        await dolzChef.createPool(
+          token.address,
+          amountPerReward,
+          rewardPerBlock,
+          depositFee,
+          minimumDeposit,
+          lockTime,
+        );
+      }
+      expect(await dolzChef.numberOfPools()).equals(numberOfPools);
     });
   });
 

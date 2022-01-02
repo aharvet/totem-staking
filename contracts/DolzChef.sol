@@ -95,6 +95,14 @@ contract DolzChef is Ownable {
     }
 
     /**
+     * @notice Get the number of pools created.
+     * @return Number of pools.
+     */
+    function numberOfPools() external view returns (uint256) {
+        return pools.length;
+    }
+
+    /**
      * @notice Enable to update the amount of BabyDolz received as staking reward every block for a specific pool.
      * @dev Only accessible to owner.
      * @param poolId Id of the pool to update.
