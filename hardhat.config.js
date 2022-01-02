@@ -23,7 +23,7 @@ module.exports = {
     hardhat: {
       // initialBaseFeePerGas: 0,
     },
-    bscTestnet: {
+    tbsc: {
       url: process.env.BSCTESTNET_ENDPOINT_URL,
       accounts: { mnemonic: process.env.MNEMONIC },
     },
