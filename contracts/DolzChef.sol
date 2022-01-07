@@ -57,6 +57,7 @@ contract DolzChef is Ownable {
     event LockTimeUpdated(uint256 indexed poolId, uint256 newLockTime);
     event PoolCreated(
         address indexed token,
+        uint256 id,
         uint256 amountPerReward,
         uint256 rewardPerBlock,
         uint256 depositFee,
@@ -182,6 +183,7 @@ contract DolzChef is Ownable {
         );
         emit PoolCreated(
             token,
+            pools.length - 1,
             amountPerReward,
             rewardPerBlock,
             depositFee,
@@ -231,6 +233,13 @@ contract DolzChef is Ownable {
 
         // Send the reward the user accumulated so far and updates deposit state
         harvest(poolId);
+        deposits[poolId][msg.sender].amount -= withdrawAmount;
+
+        emit Withdrew(poolId, msg.sender, withdrawAmount);
+        IERC20(pools[poolId].token).safeTransfer(msg.sender, withdrawAmount);
+    }
+
+    function emergencyWithdraw(uint256 poolId, uint176 withdrawAmount) external {
         deposits[poolId][msg.sender].amount -= withdrawAmount;
 
         emit Withdrew(poolId, msg.sender, withdrawAmount);

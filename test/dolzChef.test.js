@@ -27,7 +27,7 @@ function computeDepositFee(depositAmount, depositFee) {
 }
 
 describe('DolzChef', () => {
-  let owner, user1, user2; // users
+  let owner, user1, user2, random; // EOA
   let token, babyDolz, dolzChef; // contracts
   const amountPerReward = BigNumber.from('10000000');
   const rewardPerBlock = BigNumber.from('20000');
@@ -38,7 +38,7 @@ describe('DolzChef', () => {
   const effectiveDepositAmount = depositAmount.sub(computeDepositFee(depositAmount, depositFee));
 
   before(async () => {
-    [owner, user1, user2] = await ethers.getSigners();
+    [owner, user1, user2, random] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
@@ -182,6 +182,15 @@ describe('DolzChef', () => {
     });
 
     it('should emit an event when create a pool', async () => {
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
+
       await expect(
         await dolzChef.createPool(
           token.address,
@@ -195,6 +204,7 @@ describe('DolzChef', () => {
         .to.emit(dolzChef, 'PoolCreated')
         .withArgs(
           token.address,
+          1,
           amountPerReward,
           rewardPerBlock,
           depositFee,
@@ -228,18 +238,6 @@ describe('DolzChef', () => {
       expect((await dolzChef.pools(0)).token).equals(token.address);
       expect((await dolzChef.pools(1)).token).equals(secondToken.address);
     });
-
-    // it('should update token to pool id mapping', async () => {
-    //   await dolzChef.createPool(
-    //     token.address,
-    //     amountPerReward,
-    //     rewardPerBlock,
-    //     depositFee,
-    //     minimumDeposit,
-    //     lockTime,
-    //   );
-    //   expect(await dolzChef.tokenToPoolId(token.address)).equals(0);
-    // });
 
     it('should not create if deposit fee greater than 1000', async () => {
       await expect(
@@ -429,7 +427,7 @@ describe('DolzChef', () => {
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(block);
     });
 
-    it('should emit an event when withdra', async () => {
+    it('should emit an event when withdraw', async () => {
       await increaseTime(lockTime);
       await expect(dolzChef.connect(user1).withdraw(0, withdrawAmount))
         .to.emit(dolzChef, 'Withdrew')
@@ -459,6 +457,59 @@ describe('DolzChef', () => {
     it('should not withdraw before lock time end', async () => {
       await expect(dolzChef.connect(user1).withdraw(0, 100)).to.be.revertedWith(
         "DolzChef: can't withdraw before lock time end",
+      );
+    });
+  });
+
+  describe('Emergency Withdraw', () => {
+    let blockStart;
+    const withdrawAmount = 10000000;
+
+    beforeEach(async () => {
+      await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
+      await token.connect(user1).approve(dolzChef.address, depositAmount);
+      await dolzChef.connect(user1).deposit(0, depositAmount);
+      blockStart = await getBlockNumber();
+    });
+
+    it.only('should withdraw tokens before lock time end', async () => {
+      await expect(() =>
+        dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount),
+      ).to.changeTokenBalance(token, user1, withdrawAmount);
+      expect((await dolzChef.deposits(0, user1.address)).amount).equals(
+        effectiveDepositAmount.sub(withdrawAmount),
+      );
+    });
+
+    it.only('should not update reward block when withdraw', async () => {
+      await dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount);
+      expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(blockStart);
+    });
+
+    it.only('should emit an event when withdraw', async () => {
+      await expect(dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount))
+        .to.emit(dolzChef, 'Withdrew')
+        .withArgs(0, user1.address, withdrawAmount);
+    });
+
+    it.only('should not get reward when withdraw', async () => {
+      await dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount);
+      expect(await babyDolz.balanceOf(user1.address)).equals(0);
+    });
+
+    it.only('should not withdraw more that deposited', async () => {
+      await expect(
+        dolzChef.connect(user1).emergencyWithdraw(0, depositAmount.add(1)),
+      ).to.be.revertedWith(
+        'Arithmetic operation underflowed or overflowed outside of an unchecked block',
       );
     });
   });
