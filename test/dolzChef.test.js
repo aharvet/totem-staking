@@ -461,7 +461,7 @@ describe('DolzChef', () => {
     });
   });
 
-  describe('Emergency Withdraw', () => {
+  describe('Emergency withdraw', () => {
     let blockStart;
     const withdrawAmount = 10000000;
 
@@ -480,7 +480,7 @@ describe('DolzChef', () => {
       blockStart = await getBlockNumber();
     });
 
-    it.only('should withdraw tokens before lock time end', async () => {
+    it('should withdraw tokens before lock time end', async () => {
       await expect(() =>
         dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount),
       ).to.changeTokenBalance(token, user1, withdrawAmount);
@@ -489,23 +489,24 @@ describe('DolzChef', () => {
       );
     });
 
-    it.only('should not update reward block when withdraw', async () => {
+    it('should not update reward block when withdraw', async () => {
       await dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount);
       expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(blockStart);
     });
 
-    it.only('should emit an event when withdraw', async () => {
+    it('should emit an event when withdraw', async () => {
       await expect(dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount))
         .to.emit(dolzChef, 'Withdrew')
         .withArgs(0, user1.address, withdrawAmount);
     });
 
-    it.only('should not get reward when withdraw', async () => {
-      await dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount);
-      expect(await babyDolz.balanceOf(user1.address)).equals(0);
+    it('should not get reward when withdraw', async () => {
+      await expect(() =>
+        dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount),
+      ).to.changeTokenBalance(babyDolz, user1, 0);
     });
 
-    it.only('should not withdraw more that deposited', async () => {
+    it('should not withdraw more that deposited', async () => {
       await expect(
         dolzChef.connect(user1).emergencyWithdraw(0, depositAmount.add(1)),
       ).to.be.revertedWith(
@@ -716,6 +717,80 @@ describe('DolzChef', () => {
     it('should not withdraw fees if not owner', async () => {
       await expect(dolzChef.connect(user1).withdrawFees(0, user2.address, 1)).to.be.revertedWith(
         'Ownable: caller is not the owner',
+      );
+    });
+  });
+
+  describe('Close pool', () => {
+    beforeEach(async () => {
+      await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
+      await dolzChef.createPool(
+        token.address,
+        amountPerReward,
+        rewardPerBlock,
+        depositFee,
+        minimumDeposit,
+        lockTime,
+      );
+      await token.connect(user1).approve(dolzChef.address, depositAmount);
+      await dolzChef.connect(user1).deposit(0, depositAmount);
+    });
+
+    it('should terminate reward after specific block', async () => {
+      const blockStart = await getBlockNumber();
+      const lastRewardedBlock = blockStart + 10;
+
+      await dolzChef.closePool(0, lastRewardedBlock);
+      await increaseTime(lockTime);
+      await increaseBlocks(20);
+
+      await dolzChef.connect(user1).withdraw(0, 10000000);
+
+      const expectedReward = computeExpectedReward(
+        effectiveDepositAmount,
+        rewardPerBlock,
+        lastRewardedBlock - blockStart,
+        amountPerReward,
+      );
+      expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
+    });
+
+    it('should emit an event when close a pool', async () => {
+      const lastRewardedBlock = 3242;
+      await expect(dolzChef.closePool(0, lastRewardedBlock))
+        .to.emit(dolzChef, 'PoolClosed')
+        .withArgs(0, lastRewardedBlock);
+    });
+
+    it('should give normal reward before last block', async () => {
+      const blockStart = await getBlockNumber();
+      const lastRewardedBlock = blockStart + 20;
+
+      await dolzChef.closePool(0, lastRewardedBlock);
+      await increaseTime(lockTime);
+
+      await dolzChef.connect(user1).withdraw(0, 10000000);
+      const currentBlock = await getBlockNumber();
+
+      const expectedReward = computeExpectedReward(
+        effectiveDepositAmount,
+        rewardPerBlock,
+        currentBlock - blockStart,
+        amountPerReward,
+      );
+      expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
+    });
+
+    it('should not close pool if not owner', async () => {
+      await expect(dolzChef.connect(user1).closePool(0, 488)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+
+    it('should not close pool if last rewarded block not greater than current', async () => {
+      const currentBlock = await getBlockNumber();
+      await expect(dolzChef.closePool(0, currentBlock + 1)).to.be.revertedWith(
+        'DolzChef: last rewarded block must be greater than current',
       );
     });
   });

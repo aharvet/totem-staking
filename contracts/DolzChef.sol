@@ -21,7 +21,10 @@ struct Pool {
     uint72 minimumDeposit;
     // Percentage of the deposit that is collected by the pool, with one decimal
     // Eg. for 34.3 percents, depositFee will have a value of 343
-    uint144 depositFee;
+    uint104 depositFee;
+    // Last block where the reward will take effect
+    // Not taken into account if equals 0
+    uint40 lastRewardedBlock;
 }
 
 // User deposit informations
@@ -64,6 +67,7 @@ contract DolzChef is Ownable {
         uint256 minimumDeposit,
         uint256 lockTime
     );
+    event PoolClosed(uint256 indexed poolId, uint256 lastRewardedBlock);
     event Deposited(uint256 indexed poolId, address indexed account, uint256 amount);
     event Withdrew(uint256 indexed poolId, address indexed account, uint256 amount);
     event WithdrewFees(uint256 indexed poolId, uint256 amount);
@@ -121,7 +125,7 @@ contract DolzChef is Ownable {
      * @param newDepositFee New percentage of the deposit that is collected by the pool, with one decimal.
      * Eg. for 34.3 percents, depositFee will have a value of 343
      */
-    function setDepositFee(uint256 poolId, uint144 newDepositFee)
+    function setDepositFee(uint256 poolId, uint104 newDepositFee)
         external
         onlyOwner
         checkPercentage(newDepositFee)
@@ -167,7 +171,7 @@ contract DolzChef is Ownable {
         address token,
         uint64 amountPerReward,
         uint40 rewardPerBlock,
-        uint144 depositFee,
+        uint104 depositFee,
         uint72 minimumDeposit,
         uint32 lockTime
     ) external onlyOwner checkPercentage(depositFee) {
@@ -178,7 +182,8 @@ contract DolzChef is Ownable {
                 rewardPerBlock: rewardPerBlock,
                 depositFee: depositFee,
                 minimumDeposit: minimumDeposit,
-                lockTime: lockTime
+                lockTime: lockTime,
+                lastRewardedBlock: 0
             })
         );
         emit PoolCreated(
@@ -190,6 +195,21 @@ contract DolzChef is Ownable {
             minimumDeposit,
             lockTime
         );
+    }
+
+    /**
+     * @notice Enable to close a new pool by determining the last block that is going to be rewarded.
+     * @dev Only accessible to owner.
+     * @param poolId Id of the pool to terminate.
+     * @param lastRewardedBlock Last block where the reward will take effect.
+     */
+    function closePool(uint256 poolId, uint40 lastRewardedBlock) external onlyOwner {
+        require(
+            lastRewardedBlock > block.number,
+            "DolzChef: last rewarded block must be greater than current"
+        );
+        pools[poolId].lastRewardedBlock = lastRewardedBlock;
+        emit PoolClosed(poolId, lastRewardedBlock);
     }
 
     /**
@@ -297,11 +317,16 @@ contract DolzChef is Ownable {
      * @return The amount of BabyDolz token the user is entitled to as a staking reward.
      */
     function pendingReward(uint256 poolId, address account) public view returns (uint256) {
+        uint256 lastRewardedBlock = pools[poolId].lastRewardedBlock; // gas savings
+        // Checks if pool is close or not
+        uint256 lastBlock = lastRewardedBlock != 0 && lastRewardedBlock < block.number
+            ? lastRewardedBlock
+            : block.number;
         Deposit memory deposited = deposits[poolId][account]; // gas savings
         // Following computation is an optimised version of this:
         // reward = amountStaked / amountPerReward * rewardPerBlock * numberOfElapsedBlocks
         return
             ((deposited.amount * pools[poolId].rewardPerBlock) *
-                (block.number - deposited.rewardBlockStart)) / pools[poolId].amountPerReward;
+                (lastBlock - deposited.rewardBlockStart)) / pools[poolId].amountPerReward;
     }
 }
