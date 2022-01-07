@@ -220,7 +220,7 @@ contract DolzChef is Ownable {
     }
 
     /**
-     * @notice Enable users to with withdraw their stake.
+     * @notice Enable users to with withdraw their stake after end of lock time with reward.
      * @param poolId Id of pool where to withdraw tokens.
      * @param withdrawAmount Amount of tokens to withdraw.
      */
@@ -239,6 +239,11 @@ contract DolzChef is Ownable {
         IERC20(pools[poolId].token).safeTransfer(msg.sender, withdrawAmount);
     }
 
+    /**
+     * @notice Enable users to with withdraw their stake before end of lock time without reward.
+     * @param poolId Id of pool where to withdraw tokens.
+     * @param withdrawAmount Amount of tokens to withdraw.
+     */
     function emergencyWithdraw(uint256 poolId, uint176 withdrawAmount) external {
         deposits[poolId][msg.sender].amount -= withdrawAmount;
 
