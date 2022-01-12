@@ -1,5 +1,7 @@
 const hre = require('hardhat');
 
+const { verify } = require('./utils');
+
 async function main() {
   const BabyDolz = await hre.ethers.getContractFactory('BabyDolz');
   const babyDolz = await BabyDolz.deploy('BabyDolz', 'BBZ');
@@ -21,11 +23,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-
-async function verify(name, address, args) {
-  await hre.run('verify:verify', {
-    address,
-    constructorArguments: args,
-  });
-  console.log(`${name} verified`);
-}

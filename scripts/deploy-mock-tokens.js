@@ -1,5 +1,7 @@
 const hre = require('hardhat');
 
+const { verify } = require('./utils');
+
 async function main() {
   for (let i = 0; 0 < 3; i += 1) {
     const MockERC20 = await hre.ethers.getContractFactory('MockERC20');
@@ -7,11 +9,7 @@ async function main() {
     await mockERC20.deployed();
     console.log(`Mock token ${i} deployed to: `, mockERC20.address);
 
-    await hre.run('verify:verify', {
-      address: mockERC20.address,
-      constructorArguments: [`Mock Token ${i}`, `MT${i}`],
-    });
-    console.log(`Mock token ${i} verified`);
+    await verify(`Mock Token ${i}`, mockERC20.address, [`Mock Token ${i}`, `MT${i}`]);
   }
 }
 
