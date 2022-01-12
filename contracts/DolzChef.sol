@@ -89,6 +89,22 @@ contract DolzChef is Ownable {
     }
 
     /**
+     * @notice Get the number of pools created.
+     * @return Number of pools.
+     */
+    function numberOfPools() external view returns (uint256) {
+        return pools.length;
+    }
+
+    /**
+     * @notice Get all the pools at once.
+     * @return An array of the pools settings.
+     */
+    function getPools() external view returns (Pool[] memory) {
+        return pools;
+    }
+
+    /**
      * @notice Enable to update the amount of tokens that give access to 1 reward every block for a specific pool.
      * @dev Only accessible to owner.
      * @param poolId Id of the pool to update.
@@ -97,14 +113,6 @@ contract DolzChef is Ownable {
     function setAmountPerReward(uint256 poolId, uint64 newAmountPerReward) external onlyOwner {
         pools[poolId].amountPerReward = newAmountPerReward;
         emit AmountPerRewardUpdated(poolId, newAmountPerReward);
-    }
-
-    /**
-     * @notice Get the number of pools created.
-     * @return Number of pools.
-     */
-    function numberOfPools() external view returns (uint256) {
-        return pools.length;
     }
 
     /**

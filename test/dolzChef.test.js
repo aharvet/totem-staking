@@ -281,6 +281,21 @@ describe('DolzChef', () => {
       }
       expect(await dolzChef.numberOfPools()).equals(numberOfPools);
     });
+
+    it('should get an array of pools', async () => {
+      const numberOfPools = 3;
+      for (let i = 0; i < numberOfPools; i += 1) {
+        await dolzChef.createPool(
+          token.address,
+          amountPerReward,
+          rewardPerBlock,
+          depositFee,
+          minimumDeposit,
+          lockTime,
+        );
+      }
+      expect(await dolzChef.getPools()).to.have.lengthOf(numberOfPools);
+    });
   });
 
   describe('Deposit', () => {
