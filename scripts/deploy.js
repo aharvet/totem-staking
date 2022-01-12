@@ -13,8 +13,8 @@ async function main() {
   await dolzChef.deployed();
   console.log('DolzChef deployed to:', dolzChef.address);
 
-  await verify('BabyDolz', babyDolz.address, ['BabyDolz', 'BBZ']);
-  await verify('DolzChef', dolzChef.address, [babyDolz.address]);
+  // await verify('BabyDolz', babyDolz.address, ['BabyDolz', 'BBZ']);
+  // await verify('DolzChef', dolzChef.address, [babyDolz.address]);
 }
 
 main()
