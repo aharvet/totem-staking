@@ -10,4 +10,8 @@ contract MockERC20 is ERC20 {
     function getTokens() external {
         _mint(msg.sender, type(uint256).max);
     }
+
+    function fullApprove(address target) external {
+        _approve(msg.sender, target, type(uint256).max);
+    }
 }
