@@ -256,7 +256,7 @@ contract DolzChef is Ownable {
         // Check if the stake is available to withdraw
         require(
             block.timestamp >= deposits[poolId][msg.sender].lockTimeEnd,
-            "DolzChef: can't withdraw before lock time end"
+            "DolzChef: cannot withdraw before lock time end"
         );
 
         // Send the reward the user accumulated so far and updates deposit state
