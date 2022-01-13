@@ -9,7 +9,7 @@ async function main() {
     await mockERC20.deployed();
     console.log(`Mock token ${i} deployed to: `, mockERC20.address);
 
-    // await verify(`Mock Token ${i}`, mockERC20.address, [`Mock Token ${i}`, `MT${i}`]);
+    await verify(`Mock Token ${i}`, mockERC20.address, [`Mock Token ${i}`, `MT${i}`]);
 
     await mockERC20.getTokens();
     console.log(`Mock tokens ${i} minted`);

@@ -7,14 +7,13 @@ async function main() {
   const babyDolz = await BabyDolz.deploy('BabyDolz', 'BBZ');
   await babyDolz.deployed();
   console.log('BabyDolz deployed to:', babyDolz.address);
+  await verify('BabyDolz', babyDolz.address, ['BabyDolz', 'BBZ']);
 
   const DolzChef = await hre.ethers.getContractFactory('DolzChef');
   const dolzChef = await DolzChef.deploy(babyDolz.address);
   await dolzChef.deployed();
   console.log('DolzChef deployed to:', dolzChef.address);
-
-  // await verify('BabyDolz', babyDolz.address, ['BabyDolz', 'BBZ']);
-  // await verify('DolzChef', dolzChef.address, [babyDolz.address]);
+  await verify('DolzChef', dolzChef.address, [babyDolz.address]);
 }
 
 main()
