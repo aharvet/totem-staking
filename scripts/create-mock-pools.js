@@ -1,6 +1,8 @@
 const hre = require('hardhat');
 
 const { verify } = require('./utils');
+const address = require('../address.json');
+const { DolzChef: dolzChefAddress } = address[hre.network.name];
 
 async function main() {
   for (let i = 0; i < 3; i += 1) {
@@ -14,17 +16,14 @@ async function main() {
     await mockERC20.getTokens();
     console.log(`Mock tokens ${i} minted`);
 
-    const dolzChef = await hre.ethers.getContractAt(
-      'DolzChef',
-      '0x507214228E8d91faf0C7b799e977828De6D63d5b',
-    );
+    const dolzChef = await hre.ethers.getContractAt('DolzChef', dolzChefAddress);
     await dolzChef.createPool(
       mockERC20.address,
       13000 * (i + 1),
       100 * (i + 1),
       i + 1,
-      40000,
-      604800 * (i + 1),
+      '4000000000000000000000',
+      3600 * (i + 1),
     );
     console.log(`Pool created for mock token ${i}`);
   }

@@ -1,4 +1,11 @@
 {
-  "BabyDolz": "",
-  "DolzChef": ""
+  "tbsc": {
+    "BabyDolz": "0x7ef9229d84360e94c344bb9b7ade7e4d1cd1fd8f",
+    "DolzChef": "0xa9ec114151B12Cc492f30eebfFfff2Cd7bCF09E2",
+    "MockERC20": [
+      "0xBEc5cabb55d3b4E806d3A7669691e5C54Dd40842",
+      "0xE5a13FE650F19ECF146a23B1E5F583A544AAe687",
+      "0xB7CDd3bdcA857856E653F66167d8642C2165502b"
+    ]
+  }
 }
