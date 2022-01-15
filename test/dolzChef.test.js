@@ -777,6 +777,24 @@ describe('DolzChef', () => {
         .withArgs(0, lastRewardedBlock);
     });
 
+    it.only('should harvest after last rewarded block', async () => {
+      const blockStart = await getBlockNumber();
+      const lastRewardedBlock = blockStart + 10;
+
+      await dolzChef.closePool(0, lastRewardedBlock);
+      await increaseBlocks(50);
+
+      await dolzChef.connect(user1).harvest(0);
+
+      const expectedReward = computeExpectedReward(
+        effectiveDepositAmount,
+        rewardPerBlock,
+        lastRewardedBlock - blockStart,
+        amountPerReward,
+      );
+      expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
+    });
+
     it('should give normal reward before last block', async () => {
       const blockStart = await getBlockNumber();
       const lastRewardedBlock = blockStart + 20;
