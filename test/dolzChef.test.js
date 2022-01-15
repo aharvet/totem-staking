@@ -777,13 +777,14 @@ describe('DolzChef', () => {
         .withArgs(0, lastRewardedBlock);
     });
 
-    it.only('should harvest after last rewarded block', async () => {
+    it('should harvest after last rewarded block', async () => {
       const blockStart = await getBlockNumber();
       const lastRewardedBlock = blockStart + 10;
 
       await dolzChef.closePool(0, lastRewardedBlock);
-      await increaseBlocks(50);
+      await increaseBlocks(500);
 
+      await dolzChef.connect(user1).harvest(0);
       await dolzChef.connect(user1).harvest(0);
 
       const expectedReward = computeExpectedReward(
@@ -793,6 +794,20 @@ describe('DolzChef', () => {
         amountPerReward,
       );
       expect(await babyDolz.balanceOf(user1.address)).equals(expectedReward);
+    });
+
+    it(`should return 0 for pending reward when rewardBlockStart is greater than last
+    rewarded block`, async () => {
+      const blockStart = await getBlockNumber();
+      const lastRewardedBlock = blockStart + 10;
+
+      await dolzChef.closePool(0, lastRewardedBlock);
+      await increaseBlocks(500);
+
+      await dolzChef.connect(user1).harvest(0);
+      // rewardBlockStart is now greater than `lastBlock` in pendingReward()
+
+      expect(await dolzChef.pendingReward(0, user1.address)).equals(0);
     });
 
     it('should give normal reward before last block', async () => {

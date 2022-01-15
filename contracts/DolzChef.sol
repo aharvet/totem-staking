@@ -332,6 +332,9 @@ contract DolzChef is Ownable {
             ? poolInfos.lastRewardedBlock
             : block.number;
         Deposit memory deposited = deposits[poolId][account]; // gas savings
+
+        // Handles the case where user already withdrew reward after lastRewardedBlock
+        if (lastBlock < deposited.rewardBlockStart) return 0;
         // Following computation is an optimised version of this:
         // reward = amountStaked / amountPerReward * rewardPerBlock * numberOfElapsedBlocks
         return
