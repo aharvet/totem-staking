@@ -471,7 +471,7 @@ describe('DolzChef', () => {
 
     it('should not withdraw before lock time end', async () => {
       await expect(dolzChef.connect(user1).withdraw(0, 100)).to.be.revertedWith(
-        "DolzChef: can't withdraw before lock time end",
+        'DolzChef: cannot withdraw before lock time end',
       );
     });
   });
