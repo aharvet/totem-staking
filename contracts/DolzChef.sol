@@ -325,16 +325,17 @@ contract DolzChef is Ownable {
      * @return The amount of BabyDolz token the user is entitled to as a staking reward.
      */
     function pendingReward(uint256 poolId, address account) public view returns (uint256) {
-        uint256 lastRewardedBlock = pools[poolId].lastRewardedBlock; // gas savings
+        Pool memory poolInfos = pools[poolId]; // gas savings
         // Checks if pool is close or not
-        uint256 lastBlock = lastRewardedBlock != 0 && lastRewardedBlock < block.number
-            ? lastRewardedBlock
+        uint256 lastBlock = poolInfos.lastRewardedBlock != 0 &&
+            poolInfos.lastRewardedBlock < block.number
+            ? poolInfos.lastRewardedBlock
             : block.number;
         Deposit memory deposited = deposits[poolId][account]; // gas savings
         // Following computation is an optimised version of this:
         // reward = amountStaked / amountPerReward * rewardPerBlock * numberOfElapsedBlocks
         return
-            ((deposited.amount * pools[poolId].rewardPerBlock) *
-                (lastBlock - deposited.rewardBlockStart)) / pools[poolId].amountPerReward;
+            ((deposited.amount * poolInfos.rewardPerBlock) *
+                (lastBlock - deposited.rewardBlockStart)) / poolInfos.amountPerReward;
     }
 }
