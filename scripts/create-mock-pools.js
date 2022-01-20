@@ -26,6 +26,13 @@ async function main() {
       3600 * (i + 1),
     );
     console.log(`Pool created for mock token ${i}`);
+
+    const signers = await hre.ethers.getSigners();
+
+    for (let j = 0; j < 3; j += 1) {
+      await mockERC20.connect(signers[j]).approve(dolzChefAddress, hre.ethers.constants.MaxUint256);
+      console.log(`${signers[j].address} approved DolzChef for Mock Token ${i}`);
+    }
   }
 }
 
