@@ -268,18 +268,6 @@ contract DolzChef is Ownable {
     }
 
     /**
-     * @notice Enable users to with withdraw their stake before end of lock time without reward.
-     * @param poolId Id of pool where to withdraw tokens.
-     * @param withdrawAmount Amount of tokens to withdraw.
-     */
-    function emergencyWithdraw(uint256 poolId, uint176 withdrawAmount) external {
-        deposits[poolId][msg.sender].amount -= withdrawAmount;
-
-        emit Withdrew(poolId, msg.sender, withdrawAmount);
-        IERC20(pools[poolId].token).safeTransfer(msg.sender, withdrawAmount);
-    }
-
-    /**
      * @notice Enable the admin to withdraw the fees collected on a specific pool.
      * @dev Only accessible to owner.
      * @param poolId Id of the pool where to withdraw the fees collected.

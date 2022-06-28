@@ -7,16 +7,17 @@ require('solidity-coverage');
 
 // Macros
 const optimize = true;
-const showGasReporter = true;
+const showGasReporter = false;
 
 module.exports = {
   solidity: {
     version: '0.8.10',
     settings: {
       optimizer: {
-        enabled: optimize || showGasReporter || false,
+        enabled: optimize || showGasReporter,
         runs: 999999,
       },
+      evmVersion: 'berlin',
     },
   },
   networks: {

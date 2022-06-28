@@ -476,60 +476,6 @@ describe('DolzChef', () => {
     });
   });
 
-  describe('Emergency withdraw', () => {
-    let blockStart;
-    const withdrawAmount = 10000000;
-
-    beforeEach(async () => {
-      await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
-      await dolzChef.createPool(
-        token.address,
-        amountPerReward,
-        rewardPerBlock,
-        depositFee,
-        minimumDeposit,
-        lockTime,
-      );
-      await token.connect(user1).approve(dolzChef.address, depositAmount);
-      await dolzChef.connect(user1).deposit(0, depositAmount);
-      blockStart = await getBlockNumber();
-    });
-
-    it('should withdraw tokens before lock time end', async () => {
-      await expect(() =>
-        dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount),
-      ).to.changeTokenBalance(token, user1, withdrawAmount);
-      expect((await dolzChef.deposits(0, user1.address)).amount).equals(
-        effectiveDepositAmount.sub(withdrawAmount),
-      );
-    });
-
-    it('should not update reward block when withdraw', async () => {
-      await dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount);
-      expect((await dolzChef.deposits(0, user1.address)).rewardBlockStart).equals(blockStart);
-    });
-
-    it('should emit an event when withdraw', async () => {
-      await expect(dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount))
-        .to.emit(dolzChef, 'Withdrew')
-        .withArgs(0, user1.address, withdrawAmount);
-    });
-
-    it('should not get reward when withdraw', async () => {
-      await expect(() =>
-        dolzChef.connect(user1).emergencyWithdraw(0, withdrawAmount),
-      ).to.changeTokenBalance(babyDolz, user1, 0);
-    });
-
-    it('should not withdraw more that deposited', async () => {
-      await expect(
-        dolzChef.connect(user1).emergencyWithdraw(0, depositAmount.add(1)),
-      ).to.be.revertedWith(
-        'Arithmetic operation underflowed or overflowed outside of an unchecked block',
-      );
-    });
-  });
-
   describe('Pending reward', () => {
     it('should return pending reward', async () => {
       await token.transfer(user1.address, ethers.utils.parseUnits('10000', 18));
