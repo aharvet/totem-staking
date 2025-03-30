@@ -314,7 +314,7 @@ contract DolzChef is Ownable {
      */
     function pendingReward(uint256 poolId, address account) public view returns (uint256) {
         Pool memory poolInfos = pools[poolId]; // gas savings
-        // Checks if pool is close or not
+        // Checks if pool is closed or not
         uint256 lastBlock = poolInfos.lastRewardedBlock != 0 &&
             poolInfos.lastRewardedBlock < block.number
             ? poolInfos.lastRewardedBlock
